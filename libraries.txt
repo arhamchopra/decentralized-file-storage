@@ -1,0 +1,12 @@
+Parsing arguments to scripts:
+  argparse
+
+File/Directory handling:
+  os, standard python functions
+
+Sending/Receving data:
+  sockets
+
+Parsing requests/responses:
+  We will need to write our own parser
+

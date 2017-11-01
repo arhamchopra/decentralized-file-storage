@@ -1,0 +1,56 @@
+Plan to follow
+
+Clients:
+  Download:
+    Create a socket
+    Request a download from the Server
+    Receive a list of IPs
+    Loop through the IPs till we receive the file
+
+  List:
+    Display the list of files
+    Implementation upto whoever is writing this code
+
+  Upload:
+    Create a socket
+    Loop:
+      Request an upload from the Server
+      Receive an IP
+      Request an upload to the IP
+      Check for confirmation by IP
+      Send file
+      Check for confirmation of upload/ error if sent by the IP
+      Exit on confirm upload
+      Loop again on failure
+
+
+Storage(Download refers to how the download request will be handled and similarly)
+  Download:
+    Search for the file
+    Send the file to Client or send file not found error and likewise for other errors
+
+  Upload:
+    Handle_upload:
+      Receive the auth data from the Client
+      Send Ack for confirmation to start upload
+      Receive the file
+      If Error
+        Delete the file if created
+        Send error in case of error
+      Else 
+        Send OK response
+
+    Inform Server:
+      Create Socket
+      Send a request to server informing of successful file upload
+      Close socket
+
+  Copy:
+    Start Client like upload(Skipping steps here)
+    Get IP from Server
+    Send file  along with auth data of the Client and not the Storage
+    Handle similarly
+
+Server
+Work in Progress
+...
