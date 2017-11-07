@@ -1,6 +1,7 @@
 import MySQLdb as db
 
-DB_NAME = "MaidSafeDB"
+import schemas
+
 class DB_Interface():
     handler = None
 
@@ -10,7 +11,7 @@ class DB_Interface():
                     host="localhost",
                     user = "root",
                     passwd = "password",
-                    db = DB_NAME,
+                    db = schemas.DB_NAME,
                     )
             print("The db does exist")
         except:
@@ -23,32 +24,30 @@ class DB_Interface():
             self.create_db();
 
     def create_db(self):
-        db_create_query = """CREATE DATABASE IF NOT EXISTS {};""".format(DB_NAME)
-        self.run_sql(db_create_query)
-        db_select_query = """USE {};""".format(DB_NAME)
-        self.run_sql(db_select_query)
-
-        file_create_query = """CREATE TABLE IF NOT EXISTS FileData(
-                FileId INT PRIMARY KEY,
-                FileName TEXT,
-                Owner TEXT,
-                IP_list VARCHAR(255),
-                Size REAL
-                );"""
-        self.run_sql(file_create_query)
-
-        storage_create_query = """CREATE TABLE IF NOT EXISTS StorageData(
-                StorageId INT PRIMARY KEY,
-                StorageIP TEXT,
-                StorageSpace REAL,
-                UsedSpace REAL,
-                Status INT,
-                FileLock TEXT
-                );"""
-        self.run_sql(storage_create_query)
+        self.run_raw_sql(schemas.db_create_query)
+        self.run_raw_sql(schemas.db_select_query)
+        self.run_raw_sql(schemas.file_create_query)
+        self.run_raw_sql(schemas.storage_create_query)
         self.handler.commit()
 
-    def run_sql(self, sql_statement):
+    def run_raw_sql(self, sql_statement):
         cursor = self.handler.cursor()
         return cursor.execute(sql_statement)
 
+    def run_sql(self, type, sql_statement):
+        if type == "get":
+            return self.query_sql(sql_statement)
+        elif type == "create" or type == "update":
+            return self.update_sql(sql_statement)
+    
+    def query_sql(self, sql_statement):
+        cursor = self.handler.cursor()
+        cursor.execute(sql_statement)
+        return [list(elem) for elem in cursor.fetchall()]
+
+
+    def update_sql(self, sql_statement):
+        cursor = self.handler.cursor()
+        result = cursor.execute(sql_statement)
+        self.handler.commit()
+        return result
