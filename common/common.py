@@ -1,4 +1,13 @@
 
+RECV_SIZE = 1024
+def recv_line(conn):
+    buf = ""
+    while True:
+        buf += conn.recv(RECV_SIZE)
+        if not data:
+            break
+    return buf
+
 def make_request(entity_type, type, filename, filesize = None, auth, ip = None, ip_list = None , response_code = None):
 	request = {}
 	if(type == "download"):
@@ -41,3 +50,5 @@ def make_request(entity_type, type, filename, filesize = None, auth, ip = None, 
 
 def read_request(req):
 	return (eval(req))
+
+
