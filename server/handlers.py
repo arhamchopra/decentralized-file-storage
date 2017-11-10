@@ -16,8 +16,7 @@ def conn_handler(conn, addr, db_handler):
         handle_add_storage(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "remove_storage":
         pass
-    else:
-        conn.close()
+    conn.close()
 
 def handle_download(conn, addr, req_dict, db_handler):
     filename = req_dict["filename"]

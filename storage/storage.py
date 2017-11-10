@@ -12,7 +12,7 @@ from common import *
 #  Startup of server
 #  Initialize Variables
 HOST = '127.0.0.1'
-PORT = 12345
+PORT = 18000
 ENTITY_TYPE = "storage"
 OPEN_CONNECTION_LIMIT = 100
 AUTH = ""
@@ -42,12 +42,13 @@ while (1):
 		server_response=read_request(recv_line(sock))
 		print(server_response)
 		if(server_response['response_code'] == CODE_SUCCESS):
-			sock.close()
+			break
 
 	except Exception as e:
 		print e
-		break
-		
+
+sock.close()
+
 print("Server successfully acknowledged")
 #  Create an open socket for accepting connections
 print("Creating Socket for acceptings connections")
