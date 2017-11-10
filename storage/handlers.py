@@ -16,14 +16,14 @@ def conn_handler(conn, addr):
         pass
     elif req_dict["type"] == "remove_storage":
         pass
-    else:
-        conn.close()
+    conn.close()
 
 def handle_download(conn, addr, req_dict):
     auth = req_dict["auth"]
     filename = req_dict["filename"]
     filepath = os.path.join(auth, filename)
     file_exists = os.path.isfile(filepath)
+    print(file_exists)
     if not file_exists:
         msg=make_request(
                 entity_type=ENTITY_TYPE,
@@ -31,8 +31,7 @@ def handle_download(conn, addr, req_dict):
                 filename=filename,
                 auth=auth,
                 response_code=CODE_FAILURE) 
-        conn.send(bytes(msg,'utf-8'))
-        conn.close()
+        conn.send(msg)
         return
 
     filesize = os.path.getsize(filepath)
@@ -44,11 +43,10 @@ def handle_download(conn, addr, req_dict):
             filesize=filesize,
             auth=auth,
             response_code=CODE_SUCCESS) 
-    conn.send(bytes(msg,'utf-8'))
+    conn.send(msg)
 
     client_ack = read_request(recv_line(conn))
     if client_ack["response_code"] != CODE_SUCCESS:
-        conn.close()
         return
 
     with open(filepath,'rb') as f:
@@ -57,7 +55,6 @@ def handle_download(conn, addr, req_dict):
             if not data:
                 break
             conn.send(data)
-    conn.close()
 
 def handle_upload(conn, addr, req_dict):
     auth = req_dict["auth"]

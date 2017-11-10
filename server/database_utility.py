@@ -43,7 +43,11 @@ class DB_Interface():
     def query_sql(self, sql_statement):
         cursor = self.handler.cursor()
         cursor.execute(sql_statement)
-        return [list(elem) for elem in cursor.fetchall()]
+        data = cursor.fetchall()
+        if len(data)!=0:
+            return [list(elem) for elem in data]
+        else:
+            return []
 
 
     def update_sql(self, sql_statement):

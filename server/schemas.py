@@ -23,10 +23,10 @@ storage = {
 db_create_query = """CREATE DATABASE IF NOT EXISTS {};""".format(DB_NAME)
 db_select_query = """USE {};""".format(DB_NAME)
 file_create_query = """CREATE TABLE IF NOT EXISTS FileData(
-        FileId INT PRIMARY KEY,
+        FileId INT PRIMARY KEY AUTO_INCREMENT,
         FileName TEXT,
         Owner TEXT,
-        IP_list VARCHAR(255),
+        IP_List VARCHAR(255),
         Size REAL
         );"""
 storage_create_query = """CREATE TABLE IF NOT EXISTS StorageData( 
@@ -38,13 +38,29 @@ storage_create_query = """CREATE TABLE IF NOT EXISTS StorageData(
         FileLock TEXT
         );"""
 
+STORAGE_IP_DOWN = 0
+STORAGE_IP_UP = 1
+STORAGE_IP_LOCKED = 2
+
+
 #  Query Statements
+get_ip_status = """
+        SELECT Status 
+        FROM StorageData
+        WHERE StorageIP={storage_ip!r};
+        """
+file_ip_get_query = """
+        SELECT IP_List
+        FROM FileData
+        WHERE FileName={filename!r};
+        """
 storage_ip_get_query = """
         SELECT StorageIP 
         FROM StorageData 
-        WHERE Status <> 2;"""
+        WHERE Status <> {};
+        """.format(STORAGE_IP_LOCKED)
 storage_status_update_query = """
         UPDATE StorageData 
-        SET Status={} 
-        WHERE StorageIP={!r};
+        SET Status={status} 
+        WHERE StorageIP={storage_ip!r};
         """
