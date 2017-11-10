@@ -24,7 +24,6 @@ file_info = schemas.file
 storage_info = schemas.storage
 
 #  Load/Create Database
-db_handler = None
 
 #  Parse Arguments
 
@@ -58,6 +57,8 @@ while True:
     #  Accept connection
     conn, addr = open_socket.accept()
     print("Got a connection from {}".format(addr))
+    db_handler_thread = db_util.DB_Interface()
+    db_handler_thread.connect_db()
     handler_thread = Thread(
-            target = conn_handler, args=(conn, addr, db_handler))
+            target = conn_handler, args=(conn, addr, db_handler_thread))
     handler_thread.start()
