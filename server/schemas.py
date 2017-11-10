@@ -48,3 +48,8 @@ storage_status_update_query = """
         SET Status={} 
         WHERE StorageIP={!r};
         """
+storage_insertion_query = """
+        INSERT INTO StorageData
+        (StorageIP, StorageSpace, UsedSpace, Status, FileLock)
+        VALUES ({storage_ip!r},{storage_space},{used_space},{status},{file_lock!r})
+        """

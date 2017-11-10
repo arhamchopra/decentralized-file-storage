@@ -59,9 +59,3 @@ def handle_download(conn, addr, req_dict):
 
 def handle_upload(conn, addr, db_handler):
     pass
-
-def handle_add_storage(conn, addr, db_handler):
-    pass
-
-def handle_remove_storage(conn, addr, db_handler):
-    pass

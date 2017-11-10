@@ -10,7 +10,7 @@ class DB_Interface():
             self.handler = db.connect(
                     host="localhost",
                     user = "root",
-                    passwd = "password",
+                    passwd = "2726119248456",
                     db = schemas.DB_NAME,
                     )
             print("The db does exist")
@@ -19,7 +19,7 @@ class DB_Interface():
             self.handler = db.connect(
                     host="localhost",
                     user = "root",
-                    passwd = "password",
+                    passwd = "2726119248456",
                     )
             self.create_db();
 
@@ -37,9 +37,12 @@ class DB_Interface():
     def run_sql(self, type, sql_statement):
         if type == "get":
             return self.query_sql(sql_statement)
-        elif type == "create" or type == "update":
-            return self.update_sql(sql_statement)
-    
+        elif type == "create" or type == "update" or type == "insert":
+            try:
+                return self.update_sql(sql_statement)
+            except: #MySQLdb.IntegrityError raised on failure of an insert
+                return 0
+
     def query_sql(self, sql_statement):
         cursor = self.handler.cursor()
         cursor.execute(sql_statement)

@@ -60,3 +60,4 @@ while True:
     print("Got a connection from {}".format(addr))
     handler_thread = Thread(
             target = conn_handler, args=(conn, addr, db_handler))
+    handler_thread.start()
