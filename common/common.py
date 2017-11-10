@@ -4,7 +4,7 @@ def recv_line(conn):
     buf = ""
     while True:
         buf += conn.recv(RECV_SIZE)
-        if not data:
+        if not buf:
             break
     return buf
 
