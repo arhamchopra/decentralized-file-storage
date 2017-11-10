@@ -1,5 +1,5 @@
 from common import *
-
+import os
 
 ENTITY_TYPE="client"
 AUTH=""
@@ -42,21 +42,29 @@ def handle_download(auth,filename):
             sock.connect((storage_ip, storage_port))
             msg=make_request(entity_type=ENTITY_TYPE,type="download",filename=filename,auth=AUTH) 
             sock.send(bytes(msg,'utf-8'))
+            storage_response=read_request(recv_line(sock))
+            if(storage_response["response_code"]!=300):
+                continue
             with open(filename, 'wb') as f:
                 print ('file opened')
+                fsize=0
                 while True:
                     print('receiving data...')
                     data = sock.recv(1024)
                     print('data=%s'%(data))
-                    if not (len(data)==1024):
-                        f.write(data)
-                        break
                     # write data to a file
                     f.write(data)
+                    fsize+=len(data)
+                    if not data :
+                        break
 
             f.close()
-            flag=1
-            break
+            if(storage_response["filesize"]==fsize):
+                flag=1
+                break
+            else:
+                os.system('rm %s'%(filename))
+                continue
         except:
             continue
 
