@@ -12,7 +12,7 @@ from handlers import conn_handler
 #  Startup of server
 #  Initialize Variables
 HOST = '127.0.0.1'
-PORT = 10000
+PORT = 12345
 ENTITIY_TYPE = "storage"
 OPEN_CONNECTION_LIMIT = 100
 
@@ -36,3 +36,4 @@ while True:
     print("Got a connection from {}".format(addr))
     handler_thread = Thread(
             target = conn_handler, args=(conn, addr))
+    handler_thread.start()
