@@ -31,32 +31,46 @@ def handle_download(auth,filename):
 
     server_response=read_request(recv_line(sock))
     storage_id=server_response["ip_list"]
-    
-    # connect to the server on local computer
-    sock.connect((storage_ip, storage_port))
-    msg='DownloadReq %s %s'%(auth,filename) 
-    sock.send(bytes(msg,'utf-8'))
 
-    with open(filename, 'wb') as f:
-        print ('file opened')
-        while True:
-            print('receiving data...')
-            data = sock.recv(1024)
-            print('data=%s'%(data))
-            if not (len(data)==1024):
-                f.write(data)
-                break
-            # write data to a file
-            f.write(data)
-
-    f.close()
-    print('Successfully got the file')
-
-    # # receive data from the server
-    # print (repr(sock.recv(1024)))
-
-    # close the connection
     sock.close()
+    flag=0
+    for id in storage_id:
+    # connect to the server on local computer
+        storage_ip=id.split(":")[0]
+        storage_port=id.split(":")[1]
+        try:
+            sock.connect((storage_ip, storage_port))
+            msg=make_request(entity_type=ENTITY_TYPE,type="download",filename=filename,auth=AUTH) 
+            sock.send(bytes(msg,'utf-8'))
+            with open(filename, 'wb') as f:
+                print ('file opened')
+                while True:
+                    print('receiving data...')
+                    data = sock.recv(1024)
+                    print('data=%s'%(data))
+                    if not (len(data)==1024):
+                        f.write(data)
+                        break
+                    # write data to a file
+                    f.write(data)
+
+            f.close()
+            flag=1
+            break
+        except:
+            continue
+
+    sock.close()
+        
+    if(flag==1):    
+        print('Successfully got the file')
+    elif(flag==0):
+        print('Download error')
+            # # receive data from the server
+            # print (repr(sock.recv(1024)))
+
+            # close the connection
+            
 
 
 def handle_upload(conn, addr, db_handler):
