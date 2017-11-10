@@ -1,9 +1,12 @@
 
 RECV_SIZE = 1024
 SEND_SIZE = 1024
+SERVER_IP = "127.0.0.1"
+SERVER_PORT = 10000
 def recv_line(conn):
     data = ""
-    data += conn.recv(RECV_SIZE).decode("utf-8")
+    data += conn.recv(RECV_SIZE)
+    #  data += conn.recv(RECV_SIZE).decode("utf-8")
     return data
 
 def make_request(entity_type, type, filename, auth, filesize = None, ip = None, ip_list = None , response_code = None):
