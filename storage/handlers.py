@@ -1,7 +1,9 @@
 from common import *
 import os
+import subprocess
 
 ENTITY_TYPE = "storage"
+TOTAL_SPACE = 1200000
 def conn_handler(conn, addr):
     #  Based on the type of connection call different functions
     req_dict = read_request(recv_line(conn))
@@ -9,7 +11,7 @@ def conn_handler(conn, addr):
     if req_dict["type"] == "download":
         handle_download(conn, addr, req_dict)
     elif req_dict["type"] == "upload":
-        pass
+        handle_upload(conn, addr, req_dict)
     elif req_dict["type"] == "add_storage":
         pass
     elif req_dict["type"] == "remove_storage":
@@ -57,11 +59,71 @@ def handle_download(conn, addr, req_dict):
             conn.send(data)
     conn.close()
 
-def handle_upload(conn, addr, db_handler):
-    pass
+def handle_upload(conn, addr, req_dict):
+    auth = req_dict["auth"]
+    filename = req_dict["filename"]
+    filepath = os.path.join(auth, filename)
+    filesize = int(req_dict["filesize"])
+    auth_exists = os.path.isdir(auth)
+    if not auth_exists:
+        os.mkdir(auth)
+        #os.chmod(auth)
+        #3164 in octal is 500 in decimal
+    raw_out=subprocess.Popen(["du","-bs"], stdout=subprocess.PIPE)
+    out=str(raw_out.stdout.read())
+    used_space=int(out.split("\\t")[0].split("'")[1])
+    if(filesize + used_space > TOTAL_SPACE):
+        msg=make_request(
+                entity_type=ENTITY_TYPE,
+                type="upload_ack",
+                filename=filename,
+                auth=auth,
+                response_code=CODE_FAILURE) 
+        conn.send(bytes(msg,'utf-8'))
+        conn.close()
+        return
+
+    msg=make_request(
+            entity_type=ENTITY_TYPE,
+            type="upload_ack",
+            filename=filename,
+            filesize=filesize,
+            auth=auth,
+            response_code=CODE_SUCCESS) 
+    conn.send(bytes(msg,'utf-8'))
+    fsize=0
+    with open(filepath,'wb') as f:
+        while True:
+            data = conn.recv(RECV_SIZE)
+            f.write(data)
+            fsize+=len(data)
+            if len(data)<RECV_SIZE:
+                break
+    if(filesize==fsize):
+        msg=make_request(
+                entity_type=ENTITY_TYPE,
+                type="upload_complete_ack",
+                filename=filename,
+                filesize=filesize,
+                auth=auth,
+                response_code=CODE_SUCCESS) 
+        conn.send(bytes(msg,'utf-8'))
+    else:
+        os.system('rm %s 2>&1 >/dev/null'%(filepath))
+        msg=make_request(
+                entity_type=ENTITY_TYPE,
+                type="upload_complete_ack",
+                filename=filename,
+                filesize=filesize,
+                auth=auth,
+                response_code=CODE_FAILURE) 
+        conn.send(bytes(msg,'utf-8'))
+    conn.close()
+
 
 def handle_add_storage(conn, addr, db_handler):
     pass
 
 def handle_remove_storage(conn, addr, db_handler):
     pass
+
