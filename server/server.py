@@ -44,6 +44,7 @@ print("Ping Started")
 #  Create an open socket for accepting connections
 print("Creating Socket for acceptings connections")
 open_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+open_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 open_socket.bind((HOST, PORT))
 open_socket.listen(OPEN_CONNECTION_LIMIT)
 print("Socket Started")

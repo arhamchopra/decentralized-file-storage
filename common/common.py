@@ -9,7 +9,7 @@ def recv_line(conn):
     #  data += conn.recv(RECV_SIZE).decode("utf-8")
     return data
 
-def make_request(entity_type, type, filename = None, auth = None, filesize = None, ip = None, ip_list = None , response_code = None, storage_space = None, port_no = None):
+def make_request(entity_type, type, filename = None, auth = None, filesize = None, ip = None, ip_list = None , response_code = None, storage_space = None, used_space = None, port_no = None):
 	request = {}
 	#download : client -> server
 	if(type == "download"):
@@ -66,6 +66,7 @@ def make_request(entity_type, type, filename = None, auth = None, filesize = Non
 		request['type'] = "add_storage"
 		request['auth'] = auth
 		request['storage_space'] = storage_space
+		request['used_space'] = used_space
 		request['port'] = port_no
 	#storage_added_ack : server -> storage_client
 	elif(type == "storage_added_ack"):

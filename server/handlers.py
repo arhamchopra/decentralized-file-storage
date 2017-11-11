@@ -1,8 +1,11 @@
+import random
+
 from common import *
 import schemas
 
 ENTITY_TYPE = "server"
 AUTH = ""
+MAX_RETRIES = 10
 def conn_handler(conn, addr, db_handler):
     #  Based on the type of connection call different functions
     req_dict = read_request(recv_line(conn))
@@ -80,12 +83,12 @@ def handle_upload(conn, addr, req_dict, db_handler):
                 old_filename=filename,
                 old_status = schemas.STORAGE_IP_LOCKED,
                 )
-        rows_affected = db_handler.run_sql(type='update', query)
+        rows_affected = db_handler.run_sql("update", query)
     retries = 0
     while retries<MAX_RETRIES:
         query = schemas.get_ip_suff_storage.format(filesize=filesize)
         print(query)
-        id_list = db_handler.run_sql('get', query)
+        id_list = db_handler.run_sql("get", query)
         print("The result is")
         print(id_list)
         if len(id_list) == 0:
@@ -101,13 +104,14 @@ def handle_upload(conn, addr, req_dict, db_handler):
             #  Check if not already locked and try to lock
             #  If successful in locking
             query = schemas.lock_add_query.format(
-                    new_filename=filename,
+                    new_filelock = filename,
                     new_status = schemas.STORAGE_IP_LOCKED,
                     storage_ip = id,
                     )
-            rows_affected = db_handler.run_sql(type='update', query)
+            rows_affected = db_handler.run_sql("update", query)
             if rows_affected==1:
                 locked = True
+                break
         if locked:
             break
         retries += 1
@@ -135,32 +139,47 @@ def handle_upload(conn, addr, req_dict, db_handler):
     conn.send(response)
 
 def handle_add_storage(conn, addr, req_dict, db_handler):
-    storage_space_available = req_dict['storage_space']
-    port_no = req_dict['port']
-    query = schemas.storage_insertion_query.format(
-            storage_ip = addr[0]+':'+str(port_no),
-            storage_space = storage_space_available, 
-            used_space = 0,
-            status = 1,
-            file_lock = "")
-    if(db_handler.run_sql("insert", query) != 0):
+    auth = req_dict["auth"]
+    storage_space_available = req_dict["storage_space"]
+    used_storage_space = req_dict["used_space"]
+    port_no = req_dict["port"]
+    id = "{}:{}".format(addr[0], port_no)
+    query = schemas.storage_check_query.format(storage_ip = id)
+    id_count = db_handler.run_sql("get", query)
+    id_count = id_count[0][0]
+    if (id_count == 0):
+        query = schemas.storage_insertion_query.format(
+                storage_ip = id,
+                storage_space = storage_space_available, 
+                used_space = used_storage_space,
+                status = 1,
+                file_lock = ""
+                )
+        rows_affected = db_handler.run_sql("insert", query)
+        if( rows_affected == 1):
+            print("Database entry of", addr[0] +":"+ str(port_no), "made")
+            response = make_request(
+                        entity_type = ENTITY_TYPE,
+                        type = "storage_added_ack",
+                        auth = auth,
+                        response_code = CODE_SUCCESS,
+                        )
+        else:
+            response = make_request(
+                        entity_type = ENTITY_TYPE,
+                        type = "storage_added_ack",
+                        auth = auth,
+                        response_code = CODE_FAILURE,
+                        )
+    else : 
+        print("This machine is already a part of our network")
         response = make_request(
-                    entity_type = ENTITY_TYPE,
-                    type = "storage_added_ack",
-                    auth = AUTH,
-                    response_code = CODE_SUCCESS,
-                    )
-    else:
-        response = make_request(
-                    entity_type = ENTITY_TYPE,
-                    type = "storage_added_ack",
-                    auth = AUTH,
-                    response_code = CODE_FAILURE,
-                    )
-    
+                        entity_type = ENTITY_TYPE,
+                        type = "storage_added_ack",
+                        auth = auth,
+                        response_code = CODE_SUCCESS,
+                        )
     conn.send(response)
-    print("Database entry of", addr[0] +':'+ str(port_no), "made")
-    return
 
 def handle_remove_storage(conn, addr, db_handler):
     pass
