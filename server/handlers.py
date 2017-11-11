@@ -74,13 +74,45 @@ def handle_upload(conn, addr, req_dict, db_handler):
     auth = req_dict["auth"]
     filename = req_dict["filename"]
     filesize = req_dict["filesize"]
+    if "response_code" in req_dict.keys() and \
+        req_dict["response_code"] == CODE_FAILURE:
+        query = schemas.lock_remove_query.format(
+                old_filename=filename,
+                old_status = schemas.STORAGE_IP_LOCKED,
+                )
+        rows_affected = db_handler.run_sql(type='update', query)
+    retries = 0
+    while retries<MAX_RETRIES:
+        query = schemas.get_ip_suff_storage.format(filesize=filesize)
+        print(query)
+        id_list = db_handler.run_sql('get', query)
+        print("The result is")
+        print(id_list)
+        if len(id_list) == 0:
+            retries += 1
+            continue
 
-    query = schemas.get_ip_suff_storage.format(filesize=filesize)
-    print(query)
-    id = db_handler.run_sql('get', query)
-    print("The result is")
-    print(id)
-    if len(id) == 0:
+        locked = False
+        lock_attempts = 0
+        while(not locked and lock_attempts<len(id_list)):
+            lock_attempts+=1
+            id = random.choice(id_list)
+            id = id[0]
+            #  Check if not already locked and try to lock
+            #  If successful in locking
+            query = schemas.lock_add_query.format(
+                    new_filename=filename,
+                    new_status = schemas.STORAGE_IP_LOCKED,
+                    storage_ip = id,
+                    )
+            rows_affected = db_handler.run_sql(type='update', query)
+            if rows_affected==1:
+                locked = True
+        if locked:
+            break
+        retries += 1
+
+    if retries == MAX_RETRIES:
         response = make_request(
                     entity_type = ENTITY_TYPE,
                     type = "upload_ack",
@@ -90,26 +122,27 @@ def handle_upload(conn, addr, req_dict, db_handler):
                     filename = filename,
                     ip = "",
                     )
-        conn.send(response)
-        #  Error there is node with sufficient space to upload
-        return
-
-    id = id[0][0]
-    response = make_request(
-                entity_type = ENTITY_TYPE,
-                type = "upload_ack",
-                auth = auth,
-                response_code = CODE_SUCCESS,
-                filesize = filesize,
-                filename = filename,
-                ip = id,
-                )
+    else:
+        response = make_request(
+                    entity_type = ENTITY_TYPE,
+                    type = "upload_ack",
+                    auth = auth,
+                    response_code = CODE_SUCCESS,
+                    filesize = filesize,
+                    filename = filename,
+                    ip = id,
+                    )
     conn.send(response)
 
 def handle_add_storage(conn, addr, req_dict, db_handler):
     storage_space_available = req_dict['storage_space']
     port_no = req_dict['port']
-    query = schemas.storage_insertion_query.format(storage_ip = addr[0]+':'+str(port_no),storage_space = storage_space_available, used_space = 0,status = 1,file_lock = "")
+    query = schemas.storage_insertion_query.format(
+            storage_ip = addr[0]+':'+str(port_no),
+            storage_space = storage_space_available, 
+            used_space = 0,
+            status = 1,
+            file_lock = "")
     if(db_handler.run_sql("insert", query) != 0):
         response = make_request(
                     entity_type = ENTITY_TYPE,

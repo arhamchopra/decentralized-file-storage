@@ -55,6 +55,7 @@ class DB_Interface():
 
     def update_sql(self, sql_statement):
         cursor = self.handler.cursor()
-        result = cursor.execute(sql_statement)
+        cursor.execute(sql_statement)
+        rows_edited = cursor.rowcount
         self.handler.commit()
-        return result
+        return rows_edited

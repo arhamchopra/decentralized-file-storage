@@ -75,3 +75,16 @@ get_ip_suff_storage = """
         WHERE Status = 1 AND
         StorageSpace -  UsedSpace >= {filesize}
         """
+lock_remove_query = """
+        UPDATE StorageData
+        SET Status = {new_status}, FileLock = {new_filelock!r}
+        WHERE Status={{old_status}} AND FileLock = {{old_filelock!r}}
+        """.format(new_status=STORAGE_IP_UP, new_filelock = "")
+
+lock_add_query = """
+        UPDATE StorageData
+        SET Status = {{new_status}}, FileLock = {{new_filelock!r}}
+        WHERE Status={old_status} 
+        AND FileLock = {old_filelock!r}
+        AND StorageIP = {{storage_ip!r}}
+        """.format(old_status=STORAGE_IP_UP, old_filelock = "")
