@@ -11,7 +11,7 @@ def conn_handler(conn, addr, db_handler):
     if req_dict["type"] == "download":
         handle_download(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "upload":
-        pass
+        handle_upload(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "add_storage":
         handle_add_storage(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "remove_storage":
@@ -70,8 +70,41 @@ def handle_download(conn, addr, req_dict, db_handler):
     conn.send(response)
 
 
-def handle_upload(conn, addr, db_handler):
-    pass
+def handle_upload(conn, addr, req_dict, db_handler):
+    auth = req_dict["auth"]
+    filename = req_dict["filename"]
+    filesize = req_dict["filesize"]
+
+    query = schemas.get_ip_suff_storage.format(filesize=filesize)
+    print(query)
+    id = db_handler.run_sql('get', query)
+    print("The result is")
+    print(id)
+    if len(id) == 0:
+        response = make_request(
+                    entity_type = ENTITY_TYPE,
+                    type = "upload_ack",
+                    auth = auth,
+                    response_code = CODE_FAILURE,
+                    filesize = filesize,
+                    filename = filename,
+                    ip = "",
+                    )
+        conn.send(response)
+        #  Error there is node with sufficient space to upload
+        return
+
+    id = id[0][0]
+    response = make_request(
+                entity_type = ENTITY_TYPE,
+                type = "upload_ack",
+                auth = auth,
+                response_code = CODE_SUCCESS,
+                filesize = filesize,
+                filename = filename,
+                ip = id,
+                )
+    conn.send(response)
 
 def handle_add_storage(conn, addr, req_dict, db_handler):
     storage_space_available = req_dict['storage_space']

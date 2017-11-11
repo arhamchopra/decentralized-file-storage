@@ -69,3 +69,9 @@ storage_insertion_query = """
         (StorageIP, StorageSpace, UsedSpace, Status, FileLock)
         VALUES ({storage_ip!r},{storage_space},{used_space},{status},{file_lock!r})
         """
+get_ip_suff_storage = """
+        SELECT StorageIP
+        FROM StorageData
+        WHERE Status = 1 AND
+        StorageSpace -  UsedSpace >= {filesize}
+        """

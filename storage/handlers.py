@@ -68,7 +68,8 @@ def handle_upload(conn, addr, req_dict):
         #3164 in octal is 500 in decimal
     raw_out=subprocess.Popen(["du","-bs"], stdout=subprocess.PIPE)
     out=str(raw_out.stdout.read())
-    used_space=int(out.split("\\t")[0].split("'")[1])
+    used_space=int(out.split("\t")[0])
+    print(used_space)
     if(filesize + used_space > TOTAL_SPACE):
         msg=make_request(
                 entity_type=ENTITY_TYPE,
@@ -76,7 +77,7 @@ def handle_upload(conn, addr, req_dict):
                 filename=filename,
                 auth=auth,
                 response_code=CODE_FAILURE) 
-        conn.send(bytes(msg,'utf-8'))
+        conn.send(msg)
         conn.close()
         return
 
@@ -87,7 +88,7 @@ def handle_upload(conn, addr, req_dict):
             filesize=filesize,
             auth=auth,
             response_code=CODE_SUCCESS) 
-    conn.send(bytes(msg,'utf-8'))
+    conn.send(msg)
     fsize=0
     with open(filepath,'wb') as f:
         while True:
@@ -104,7 +105,7 @@ def handle_upload(conn, addr, req_dict):
                 filesize=filesize,
                 auth=auth,
                 response_code=CODE_SUCCESS) 
-        conn.send(bytes(msg,'utf-8'))
+        conn.send(msg)
     else:
         os.system('rm %s 2>&1 >/dev/null'%(filepath))
         msg=make_request(
@@ -114,5 +115,5 @@ def handle_upload(conn, addr, req_dict):
                 filesize=filesize,
                 auth=auth,
                 response_code=CODE_FAILURE) 
-        conn.send(bytes(msg,'utf-8'))
+        conn.send(msg)
     conn.close()

@@ -6,7 +6,7 @@ import socket
 
 ENTITY_TYPE="client"
 #  Add AUTH data here or it wont work
-AUTH=""
+AUTH="auth"
 
 def handler(arg):
     #  Based on the type of connection call different functions
@@ -112,9 +112,10 @@ def handle_upload(auth,filename):
         filename=filename,
         filesize=filesize,
         auth=AUTH)
-    sock.send(bytes(server_request,'utf-8'))
+    sock.send(server_request)
 
     server_response=read_request(recv_line(sock))
+    print(server_response)
     if (server_response["response_code"]==CODE_FAILURE):
         print("Server Error")
         sock.close()
@@ -123,6 +124,7 @@ def handle_upload(auth,filename):
     storage_id=server_response["ip"]
 
     sock.close()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         
 
     # storage_id="127.0.0.1:12345"
 
@@ -130,6 +132,8 @@ def handle_upload(auth,filename):
     # connect to the server on local computer
     storage_ip=storage_id.split(":")[0]
     storage_port=int(storage_id.split(":")[1])
+    print(storage_ip)
+    print(storage_port)
 
     sock.connect((storage_ip, storage_port))
     msg=make_request(entity_type=ENTITY_TYPE,
@@ -137,7 +141,7 @@ def handle_upload(auth,filename):
         filename=filename,
         filesize=filesize,
         auth=AUTH) 
-    sock.send(bytes(msg,'utf-8'))
+    sock.send(msg)
     storage_response=read_request(recv_line(sock))
     if(storage_response["response_code"]!=CODE_SUCCESS):
         pass        
@@ -172,5 +176,5 @@ def handle_remove_storage(conn, addr, db_handler):
     pass
 
 #  Testing
-# import sys
-# handle_upload(sys.argv[1], sys.argv[2])
+import sys
+handle_upload(sys.argv[1], sys.argv[2])
