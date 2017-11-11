@@ -74,3 +74,9 @@ storage_check_query = """
         FROM StorageData
         WHERE StorageIP = {storage_ip!r};
         """
+get_ip_suff_storage = """
+        SELECT StorageIP
+        FROM StorageData
+        WHERE Status = 1 AND
+        StorageSpace -  UsedSpace >= {filesize}
+        """

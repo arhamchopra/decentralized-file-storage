@@ -12,7 +12,7 @@ from common import *
 #  Startup of server
 #  Initialize Variables
 HOST = '127.0.0.1'
-PORT = 18000
+PORT = 12345
 ENTITY_TYPE = "storage"
 OPEN_CONNECTION_LIMIT = 100
 AUTH = ""

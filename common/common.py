@@ -41,6 +41,7 @@ def make_request(entity_type, type, filename = None, auth = None, filesize = Non
 		request['type'] = "upload_ack"
 		request['ip'] = ip
 		request['response_code'] = response_code
+		request['filename'] = filename
 		request['filesize'] = filesize
 		request['auth'] = auth
 	#upload_complete_ack : storage_client -> client

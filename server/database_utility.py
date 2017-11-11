@@ -10,7 +10,7 @@ class DB_Interface():
             self.handler = db.connect(
                     host="localhost",
                     user = "root",
-                    passwd = "2726119248456",
+                    passwd = "password",
                     db = schemas.DB_NAME,
                     )
             print("The db does exist")
@@ -19,7 +19,7 @@ class DB_Interface():
             self.handler = db.connect(
                     host="localhost",
                     user = "root",
-                    passwd = "2726119248456",
+                    passwd = "password",
                     )
             self.create_db();
 
