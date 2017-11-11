@@ -3,8 +3,8 @@
 
 ##Requirements
 * Python
- + argparse
- + MySQLdb
+     + argparse
+     +MySQLdb
 * MySQL
 
 ## Types of devices on the network ##
