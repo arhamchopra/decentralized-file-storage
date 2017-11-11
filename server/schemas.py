@@ -67,5 +67,10 @@ storage_status_update_query = """
 storage_insertion_query = """
         INSERT INTO StorageData
         (StorageIP, StorageSpace, UsedSpace, Status, FileLock)
-        VALUES ({storage_ip!r},{storage_space},{used_space},{status},{file_lock!r})
+        VALUES ({storage_ip!r},{storage_space},{used_space},{status},{file_lock!r});
+        """
+storage_check_query = """
+        SELECT count(*)
+        FROM StorageData
+        WHERE StorageIP = {storage_ip!r};
         """
