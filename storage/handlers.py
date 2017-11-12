@@ -4,6 +4,9 @@ import subprocess
 
 ENTITY_TYPE = "storage"
 TOTAL_SPACE = 1200000
+
+#MAIDSAFE_FILEPATH = "./maidsafe/"
+MAX_RETRIES = 10
 def conn_handler(conn, addr):
     #  Based on the type of connection call different functions
     req_dict = read_request(recv_line(conn))
@@ -12,10 +15,8 @@ def conn_handler(conn, addr):
         handle_download(conn, addr, req_dict)
     elif req_dict["type"] == "upload":
         handle_upload(conn, addr, req_dict)
-    elif req_dict["type"] == "add_storage":
-        pass
-    elif req_dict["type"] == "remove_storage":
-        pass
+    elif req_dict["type"] == "copy":
+        handle_copy(conn, addr, req_dict)
     conn.close()
 
 def handle_download(conn, addr, req_dict):
@@ -96,7 +97,8 @@ def handle_upload(conn, addr, req_dict):
             f.write(data)
             fsize+=len(data)
             if len(data)<RECV_SIZE:
-                break
+                break       
+
     if(filesize==fsize):
         msg=make_request(
                 entity_type=ENTITY_TYPE,
@@ -106,6 +108,11 @@ def handle_upload(conn, addr, req_dict):
                 auth=auth,
                 response_code=CODE_SUCCESS) 
         conn.send(msg)
+        # Create a socket to send the upload complete ack to the server
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+        sock.connect(( SERVER_IP, SERVER_PORT ))
+        sock.send(msg)
+        sock.close()
     else:
         os.system('rm %s 2>&1 >/dev/null'%(filepath))
         msg=make_request(
@@ -117,3 +124,160 @@ def handle_upload(conn, addr, req_dict):
                 response_code=CODE_FAILURE) 
         conn.send(msg)
     conn.close()
+
+def _copy_helper(req_dict):
+
+    # Auth is the auth of the owner of the file
+    auth = req_dict["auth"]
+    filename = req_dict["filename"]
+    filesize = req_dict["filesize"]
+    storage_id = req_dict["ip"]
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         
+
+    send_success = 0
+    # connect to the server on local computer
+    storage_ip = storage_id.split(":")[0]
+    storage_port = int(storage_id.split(":")[1])
+    print(storage_ip)
+    print(storage_port)
+
+    sock.connect((storage_ip, storage_port))
+    msg = make_request(
+        entity_type = ENTITY_TYPE,
+        type ="upload",
+        filename = filename,
+        filesize = filesize,
+        auth = auth
+        ) 
+    sock.send(msg)
+    storage_response = read_request(recv_line(sock))
+    filepath = auth+"/"+filename
+    if(storage_response["response_code"] != CODE_SUCCESS):
+        return False
+
+    with open(filepath, "rb") as f:
+        print ("file opened")
+        while True:
+            data = f.read(SEND_SIZE)
+            if len(data) == 0 :
+                send_success = 1
+                break
+            sock.send(data)
+            #print("data=%s"%(data))
+            # write data to a file
+    upload_status = False
+    if(send_success == 1):
+        storage_response_ack = read_request(recv_line(sock))
+        if(storage_response_ack["response_code"]==CODE_SUCCESS):
+            print("Successfully sent the file")
+            upload_status = True
+        else:
+            print("Upload not successful")
+    else:
+        print("Upload error")
+    
+    sock.close()
+    return upload_status
+
+def _storage_upload_helper(server_response, auth, filename, filepath, filesize):
+
+    if (server_response["response_code"]==CODE_FAILURE):
+        print("Server Error")
+        sock.close()
+        return False
+
+    storage_id = server_response["ip"]
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         
+
+    send_success = 0
+    # connect to the server on local computer
+    storage_ip = storage_id.split(":")[0]
+    storage_port = int(storage_id.split(":")[1])
+    print(storage_ip)
+    print(storage_port)
+
+    sock.connect((storage_ip, storage_port))
+    msg = make_request(
+        entity_type = ENTITY_TYPE,
+        type ="upload",
+        filename = filename,
+        filesize = filesize,
+        auth = auth
+        ) 
+    sock.send(msg)
+    storage_response = read_request(recv_line(sock))
+
+    if(storage_response["response_code"]!=CODE_SUCCESS):
+        return False
+
+    with open(filepath, "rb") as f:
+        print ("file opened")
+        while True:
+            data=f.read(SEND_SIZE)
+            if len(data)==0 :
+                send_success=1
+                break
+            sock.send(data)
+            #print("data=%s"%(data))
+            # write data to a file
+    upload_status = False
+    if(send_success == 1):
+        storage_response_ack = read_request(recv_line(sock))
+        if(storage_response_ack["response_code"]==CODE_SUCCESS):
+            print("Successfully sent the file")
+            upload_status = True
+        else:
+            print("Upload not successful")
+    else:
+        print("Upload error")
+    
+    sock.close()
+    return upload_status
+
+def handle_copy(conn, addr, req_dict):
+
+    conn.close()
+    copy_success = False
+    copy_success = _copy_helper(req_dict)
+    
+    if (copy_success != True):
+        copy_flag = 0
+        # Auth is the auth of the owner of the file
+        auth = req_dict["auth"]
+        filename = req_dict["filename"]
+        filesize = req_dict["filesize"]
+
+        retries = 0
+        while retries<MAX_RETRIES:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)         
+            sock.connect(( SERVER_IP, SERVER_PORT ))
+
+            server_request=make_request(
+                entity_type = ENTITY_TYPE,
+                type ="upload",
+                filename=filename,
+                filesize=filesize,
+                auth=auth,
+                )
+            print(server_request)
+            sock.send(server_request)
+
+            server_res = read_request(recv_line(sock))
+            sock.close()
+            print(server_res)
+            filepath = auth + "/" + filename
+            upload_success = _storage_upload_helper(server_res, auth, filename, filepath, filesize)
+
+            if upload_success:
+                copy_flag = 1
+                break
+            else:
+                retries += 1
+
+        if copy_flag:
+            print ("Copy of "+filename +" is successful")
+        else:
+            print ("Copy of "+filename +" failed")
+    else:
+        print ("Copy of "+req_dict["filename"] +" successful")
