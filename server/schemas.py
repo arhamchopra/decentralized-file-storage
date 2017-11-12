@@ -52,7 +52,7 @@ get_ip_status = """
 file_ip_get_query = """
         SELECT IP_List
         FROM FileData
-        WHERE FileName={filename!r};
+        WHERE FileName={filename!r} AND Owner={owner!r};
         """
 storage_ip_get_query = """
         SELECT StorageIP 
@@ -83,7 +83,9 @@ get_ip_suff_storage = """
 lock_remove_query = """
         UPDATE StorageData
         SET Status = {new_status}, FileLock = {new_filelock!r}
-        WHERE Status={{old_status}} AND FileLock = {{old_filelock!r}}
+        WHERE Status={{old_status}} 
+        AND FileLock = {{old_filelock!r}}
+        AND StorageIP = {{storage_ip!r}}
         """.format(new_status=STORAGE_IP_UP, new_filelock = "")
 
 lock_add_query = """

@@ -24,7 +24,10 @@ def conn_handler(conn, addr, db_handler):
 def handle_download(conn, addr, req_dict, db_handler):
     filename = req_dict["filename"]
     auth = req_dict["auth"]
-    query = schemas.file_ip_get_query.format(filename=filename)
+    query = schemas.file_ip_get_query.format(
+            filename=filename,
+            owner=auth.split(":")[0]
+            )
     print(query)
     ip_list = db_handler.run_sql("get", query)
     if len(ip_list)==0:
@@ -79,11 +82,15 @@ def handle_upload(conn, addr, req_dict, db_handler):
     filesize = req_dict["filesize"]
     if "response_code" in req_dict.keys() and \
         req_dict["response_code"] == CODE_FAILURE:
+        locked_ip = req_dict["ip"]
         query = schemas.lock_remove_query.format(
-                old_filename=filename,
+                old_filelock = filename,
                 old_status = schemas.STORAGE_IP_LOCKED,
+                storage_ip = locked_ip,
                 )
+        print(query)
         rows_affected = db_handler.run_sql("update", query)
+        print("Tried removing the lock")
     retries = 0
     while retries<MAX_RETRIES:
         query = schemas.get_ip_suff_storage.format(filesize=filesize)
@@ -138,6 +145,7 @@ def handle_upload(conn, addr, req_dict, db_handler):
                     )
     conn.send(response)
 
+
 def handle_add_storage(conn, addr, req_dict, db_handler):
     auth = req_dict["auth"]
     storage_space_available = req_dict["storage_space"]
@@ -180,6 +188,7 @@ def handle_add_storage(conn, addr, req_dict, db_handler):
                         response_code = CODE_SUCCESS,
                         )
     conn.send(response)
+
 
 def handle_remove_storage(conn, addr, db_handler):
     pass

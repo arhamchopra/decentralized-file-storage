@@ -1,26 +1,26 @@
-import socket
-
-from common import *
 import os
 import socket
 
+from common import *
+
 ENTITY_TYPE="client"
 #  Add AUTH data here or it wont work
-AUTH="auth"
+MAIDSAFE_FILEPATH = "./maidsafe/"
 
-def handler(arg):
-    #  Based on the type of connection call different functions
-    if arg["type"] == "download":
-        handle_download(arg["auth"], arg["filename"])
-        
-    elif arg["type"] == "upload":
-        pass
-    elif arg["type"] == "add_storage":
-        pass
-    elif arg["type"] == "remove_storage":
-        pass
+def handler(args):
+    #  Based on the command of connection call different functions
+    if "dirpath" in args.keys():
+        MAIDSAFE_FILEPATH = args["dirpath"]
+
+    if args["command"] == "download":
+        handle_download(args["auth"], args["filename"])
+    elif args["command"] == "upload":
+        handle_upload(args["auth"], args["filename"])
+    elif args["command"] == "list":
+        handle_list()
     else:
-        conn.close()
+        print("Invalid usage, check with instructions")
+        
 
 def handle_download(auth, filename):
     # Create a socket object
@@ -28,10 +28,11 @@ def handle_download(auth, filename):
     sock.connect((SERVER_IP,SERVER_PORT))
 
     server_request=make_request(
-            entity_type=ENTITY_TYPE,
-            type="download",
+            entity_type =ENTITY_TYPE,
+            type ="download",
             filename=filename,
-            auth=AUTH)
+            auth=auth
+            )
     sock.send(server_request)
     server_response=read_request(recv_line(sock))
     if server_response["response_code"] == CODE_FAILURE:
@@ -52,21 +53,23 @@ def handle_download(auth, filename):
             sock.connect((storage_ip, storage_port))
 
             msg=make_request(
-                    entity_type=ENTITY_TYPE,
-                    type="download",
+                    entity_type =ENTITY_TYPE,
+                    type ="download",
                     filename=filename,
-                    auth=AUTH) 
+                    auth=auth
+                    ) 
             sock.send(msg)
             storage_response=read_request(recv_line(sock))
             if(storage_response["response_code"]!=CODE_SUCCESS):
                 continue
             else:
                 msg=make_request(
-                        entity_type=ENTITY_TYPE,
-                        type="download_ack",
+                        entity_type =ENTITY_TYPE,
+                        type ="download_ack",
                         filename=filename,
-                        auth=AUTH,
-                        response_code=CODE_SUCCESS) 
+                        auth=auth,
+                        response_code=CODE_SUCCESS
+                        )
                 sock.send(msg)
 
             with open(filename, 'wb') as f:
@@ -107,11 +110,13 @@ def handle_upload(auth,filename):
     sock.connect((SERVER_IP,SERVER_PORT))
 
     server_request=make_request(
-        entity_type=ENTITY_TYPE,
-        type="upload",
+        entity_type =ENTITY_TYPE,
+        type ="upload",
         filename=filename,
         filesize=filesize,
-        auth=AUTH)
+        auth=auth,
+        )
+    print(server_request)
     sock.send(server_request)
 
     server_response=read_request(recv_line(sock))
@@ -136,11 +141,12 @@ def handle_upload(auth,filename):
     print(storage_port)
 
     sock.connect((storage_ip, storage_port))
-    msg=make_request(entity_type=ENTITY_TYPE,
-        type="upload",
+    msg=make_request(entity_type =ENTITY_TYPE,
+        type ="upload",
         filename=filename,
         filesize=filesize,
-        auth=AUTH) 
+        auth=auth
+        ) 
     sock.send(msg)
     storage_response=read_request(recv_line(sock))
     if(storage_response["response_code"]!=CODE_SUCCESS):
@@ -161,20 +167,17 @@ def handle_upload(auth,filename):
             storage_response_ack=read_request(recv_line(sock))
             if(storage_response_ack["response_code"]==CODE_SUCCESS):
                 print('Successfully sent the file')
+                maidsafe_path = os.path.join(MAIDSAFE_FILEPATH, filename)
+                open(maidsafe_path, 'a').close()
             else:
                 print('Upload not successful')
     elif(send_success==0):
         print('Upload error')
 
-
     sock.close()
 
-def handle_add_storage(conn, addr, db_handler):
-    pass
 
-def handle_remove_storage(conn, addr, db_handler):
-    pass
-
-#  Testing
-import sys
-handle_upload(sys.argv[1], sys.argv[2])
+def handle_list():
+    file_list = os.listdir(MAIDSAFE_FILEPATH)
+    for file in file_list:
+        print(file)

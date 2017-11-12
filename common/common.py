@@ -26,6 +26,7 @@ def make_request(entity_type, type, filename = None, auth = None, filesize = Non
 		request['filesize'] = filesize
 		request['ip'] = ip
 		request['auth'] = auth
+		request['response_code'] = response_code
 	#download_ack : server -> client
 	elif(type == "download_ack"):
 		request['entity_type'] = entity_type

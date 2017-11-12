@@ -1,28 +1,37 @@
-import socket                   # Import socket module
-from client_functions import *
+import os
+import argparse
 
-server_ip = socket.gethostname()     # should replace local adress with server ip
-port = 39000                 	     # Reserve a port for the service.
+from handlers import handler
 
-action = "download"					 #This will be decided by the action the user wants to perform
+SERVER_IP = "127.0.0.1"
+SERVER_PORT = 10000
+AUTH = "default"
+DIRPATH = "./maidsafe"
 
-#File to download
-filename = "test.txt"				 #Also will be given by the user
+parser = argparse.ArgumentParser()
 
-if (action == "download"):
+parser.add_argument('--auth', required=True, 
+        help='Authentication details of the user')
+parser.add_argument('--server_ip', type=str, 
+        default=SERVER_IP, help='IP for the server')
+parser.add_argument('--server_port', type=int, 
+        default=SERVER_PORT, help='Port for the server')
+parser.add_argument('--dirpath', type=str, default=DIRPATH, 
+        help='Path to the maidsafe directory')
+parser.add_argument('--command', type=str, required=True,
+        help='The command you want to run: (upload | download | list)')
+parser.add_argument('--filename', type=str, default = "",
+        help='The file being requested')
 
-	##################################################################
-	#This Part has to be changed
-	#Until the server is coded
-	#Assume the server has returned it a list of IPs
-	#and we have chosen one, '127.0.0.1'
-	##################################################################
-	storage_ip = socket.gethostname()
+args = parser.parse_args()
+args_dict = vars(args)
 
-	#Get list of Ips from the server
-	#loop through list of ips
-	#if download(filename,storage_ip,port):
-	#	break
+if not os.path.isdir(args.dirpath):
+    os.mkdir(args.dirpath)
 
-	download(filename, storage_ip, port)
+if(args.command == 'upload' or args.command == 'download'):
+    if args.filename is "":
+        print("Incorrect usage: Need the filename")
+        os._exit(0)
 
+handler(args_dict)
