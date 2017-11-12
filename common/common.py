@@ -1,4 +1,5 @@
 
+MAX_COPIES = 2
 RECV_SIZE = 1024
 SEND_SIZE = 1024
 SERVER_IP = "127.0.0.1"
@@ -80,7 +81,6 @@ def make_request(entity_type, type, filename = None, auth = None, filesize = Non
 		return 0
 
 	return str(request)
-
 
 def read_request(req):
 	return (eval(req))

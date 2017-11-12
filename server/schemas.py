@@ -95,3 +95,24 @@ lock_add_query = """
         AND FileLock = {old_filelock!r}
         AND StorageIP = {{storage_ip!r}}
         """.format(old_status=STORAGE_IP_UP, old_filelock = "")
+
+file_check_query = """
+        SELECT * 
+        FROM FileData
+        WHERE FileName={filename!r}
+        AND Owner={owner!r}
+        AND Size={filesize}
+        """
+
+file_add_query = """
+        INSERT INTO FileData(FileName, Owner, IP_List, Size)
+        VALUES({filename!r}, {owner!r}, {ip_list!r}, {filesize});
+        """
+
+file_update_query = """
+        UPDATE FileData
+        SET ip_list = {ip_list!r}
+        WHERE FileName={filename!r}
+        AND Owner = {owner!r}
+        AND Size = {filesize});
+        """
