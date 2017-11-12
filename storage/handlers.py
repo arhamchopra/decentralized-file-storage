@@ -1,9 +1,13 @@
-from common import *
 import os
 import subprocess
+import socket
+
+from common import *
 
 ENTITY_TYPE = "storage"
 TOTAL_SPACE = 1200000
+HOST = '127.0.0.1'
+PORT = 12011
 
 #MAIDSAFE_FILEPATH = "./maidsafe/"
 MAX_RETRIES = 10
@@ -100,7 +104,7 @@ def handle_upload(conn, addr, req_dict):
                 break       
 
     if(filesize==fsize):
-        msg=make_request(
+        msg = make_request(
                 entity_type=ENTITY_TYPE,
                 type="upload_complete_ack",
                 filename=filename,
@@ -108,10 +112,20 @@ def handle_upload(conn, addr, req_dict):
                 auth=auth,
                 response_code=CODE_SUCCESS) 
         conn.send(msg)
+        msg2 = make_request(
+                entity_type=ENTITY_TYPE,
+                type="upload_complete_ack",
+                filename=filename,
+                filesize=filesize,
+                auth=auth,
+                ip = "{}:{}".format(HOST, PORT),
+                response_code=CODE_SUCCESS) 
         # Create a socket to send the upload complete ack to the server
+        print("Request to server")
+        print(msg2)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         sock.connect(( SERVER_IP, SERVER_PORT ))
-        sock.send(msg)
+        sock.send(msg2)
         sock.close()
     else:
         os.system('rm %s 2>&1 >/dev/null'%(filepath))

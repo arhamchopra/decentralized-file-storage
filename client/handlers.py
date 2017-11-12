@@ -188,9 +188,9 @@ def handle_upload(auth, filename):
         print(server_request)
         sock.send(server_request)
 
-        server_res = read_request(recv_line(sock))
+        server_response = read_request(recv_line(sock))
         sock.close()
-        print(server_res)
+        print(server_response)
         storage_id = server_response["ip"]
         resp_code = server_response["response_code"]
         upload_success = _upload_helper(resp_code, storage_id, 

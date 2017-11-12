@@ -82,7 +82,7 @@ get_ip_suff_storage = """
         """
 lock_remove_query = """
         UPDATE StorageData
-        SET Status = {new_status}, FileLock = {new_filelock!r}
+        SET Status = {new_status}, FileLock = {new_filelock!r}, UsedSpace = UsedSpace + {{filesize}} 
         WHERE Status={{old_status}} 
         AND FileLock = {{old_filelock!r}}
         AND StorageIP = {{storage_ip!r}}
@@ -111,8 +111,8 @@ file_add_query = """
 
 file_update_query = """
         UPDATE FileData
-        SET ip_list = {ip_list!r}
+        SET IP_List = {ip_list!r}
         WHERE FileName={filename!r}
         AND Owner = {owner!r}
-        AND Size = {filesize});
+        AND Size = {filesize};
         """

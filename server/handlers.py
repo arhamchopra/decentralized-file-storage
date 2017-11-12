@@ -1,4 +1,5 @@
 import random
+import socket
 
 from common import *
 import schemas
@@ -21,15 +22,16 @@ def conn_handler(conn, addr, db_handler):
     elif req_dict["type"] == "remove_storage":
         pass
     elif req_dict["type"] == "upload_complete_ack":
-        handle_upload_complete(conn, addr, db_handler, req_dict)
+        handle_upload_complete(conn, addr, req_dict, db_handler)
 
     conn.close()
 
-def _remove_lock(db_handler, filename, locked_ip):
+def _remove_lock(db_handler, filename, locked_ip, filesize):
     query = schemas.lock_remove_query.format(
             old_filelock = filename,
             old_status = schemas.STORAGE_IP_LOCKED,
             storage_ip = locked_ip,
+            filesize = filesize,
             )
     print(query)
     rows_affected = db_handler.run_sql("update", query)
@@ -46,6 +48,8 @@ def get_filedata(db_handler, filename, auth, filesize):
             owner = auth,
             filesize = filesize,
             )
+    print("get_file_data_query")
+    print(query)
     file_data = db_handler.run_sql("get", query)
     if len(file_data) == 0:
         return None
@@ -59,8 +63,10 @@ def _insert_file(db_handler, filename, auth, ip, filesize):
             ip_list = str(ip),
             filesize = filesize,
             )
-    rows_affected = db_handler.run_sql("get", query)
-    if len(rows_affected) == 1:
+    print("add_file_data_query")
+    print(query)
+    rows_affected = db_handler.run_sql("create", query)
+    if rows_affected == 1:
         return True
     else:
         return False
@@ -72,29 +78,40 @@ def _update_file(db_handler, filename, auth, ip_list, filesize):
             ip_list = str(ip_list),
             filesize = filesize,
             )
-    rows_affected = db_handler.run_sql("get", query)
-    if len(rows_affected) == 1:
+    print("update_file_data_query")
+    print(query)
+    rows_affected = db_handler.run_sql("update", query)
+    if rows_affected == 1:
         return True
     else:
         return False
 
 def add_file(db_handler, filename, auth, ip, filesize):
     file_data = get_filedata(db_handler, filename, auth, filesize)
-    is_done = 0
+    print("Get file data")
+    print(file_data)
+    count = 0
     if not file_data:
         is_done = _insert_file(db_handler, filename, auth, ip, filesize)
+        if is_done:
+            count = 1
+        else:
+            count = 0
+
     else:
-        file_data["ip_list"] += ", " + str(ip)
+        print(file_data)
+        file_data[3] += ", " + str(ip)
         no_copies = file_data
         is_done = _update_file(db_handler, filename, auth, 
-                file_data["ip_list"], filesize)
-        if(len(file_data["ip_list"].split(", "))>=MAX_COPIES):
-            print("Completed making all copies")
-            is_done = False
+                file_data[3], filesize)
+        if is_done:
+            count = len(file_data[3].split(", "))
         else:
-            is_done = True
+            count = -1*len(file_data[3].split(", "))
     
-    return is_done
+    print("Got count")
+    print(count)
+    return count 
 
 def handle_download(conn, addr, req_dict, db_handler):
     filename = req_dict["filename"]
@@ -184,6 +201,7 @@ def get_new_upload_id(db_handler, filename, filesize):
         if locked:
             break
         retries += 1
+    print("Got id")
 
     if retries == MAX_RETRIES:
         return None
@@ -204,6 +222,7 @@ def handle_upload2(conn, addr, req_dict, db_handler):
             print("Lock not removed")
 
     new_id = get_new_upload_id(db_handler, filename, filesize)
+    print("Hello")
     if new_id:
         response = make_request(
                     entity_type = ENTITY_TYPE,
@@ -212,7 +231,7 @@ def handle_upload2(conn, addr, req_dict, db_handler):
                     response_code = CODE_SUCCESS,
                     filesize = filesize,
                     filename = filename,
-                    ip = id,
+                    ip = new_id,
                     )
     else:
         response = make_request(
@@ -224,6 +243,7 @@ def handle_upload2(conn, addr, req_dict, db_handler):
                     filename = filename,
                     ip = "",
                     )
+    print(response)
     conn.send(response)
 
 def handle_upload_temp(conn, addr, req_dict, db_handler):
@@ -233,7 +253,7 @@ def handle_upload_temp(conn, addr, req_dict, db_handler):
     if "response_code" in req_dict.keys() and \
         req_dict["response_code"] == CODE_FAILURE:
         locked_ip = req_dict["ip"]
-        is_removed = _remove_lock(db_handler, filename, locked_ip)
+        is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
         if is_removed:
             print("Lock removed")
         else:
@@ -342,14 +362,43 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
     filesize = req_dict["filesize"]
     locked_ip = req_dict["ip"]
 
-    is_removed = _remove_lock(db_handler, filename, locked_ip)
-    if not remove_lock_success:
+    conn.close()
+
+    print("Trying to add")
+    no_added = add_file(db_handler, filename, auth, locked_ip, filesize)
+    if no_added<=0:
+        print("There was some error")
+        is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
+        print("Trying to remove lock from ")
+        print(locked_ip)
+        if not is_removed:
+            print("Lock could not be removed")
+
+        return
+
+    if no_added == MAX_COPIES:
+        is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
+        print("Trying to remove lock from ")
+        print(locked_ip)
+        if not is_removed:
+            print("Lock could not be removed")
+
+        return
+
+    new_id = get_new_upload_id(db_handler, filename, filesize)
+
+    is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
+    print("Trying to remove lock from ")
+    print(locked_ip)
+    if not is_removed:
         print("Lock could not be removed")
 
-    is_added = add_file(db_handler, filename, auth, locked_ip, filesize)
-    if not is_added:
-        return
-    new_id = get_new_upload_id(db_handler, filename, filesize)
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    storage_ip = locked_ip.split(":")[0]
+    storage_port = int(locked_ip.split(":")[1])
+    sock.connect((storage_ip, storage_port))
+
     if new_id:
         response = make_request(
                     entity_type = ENTITY_TYPE,
@@ -358,7 +407,7 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
                     response_code = CODE_SUCCESS,
                     filesize = filesize,
                     filename = filename,
-                    ip = id,
+                    ip = new_id,
                     )
     else:
         response = make_request(
@@ -370,7 +419,9 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
                     filename = filename,
                     ip = "",
                     )
-    conn.send(response)
+    print(response)
+    sock.send(response)
+    sock.close()
 
 def handle_remove_storage(conn, addr, db_handler):
     pass

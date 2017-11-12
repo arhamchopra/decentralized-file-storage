@@ -54,6 +54,7 @@ def make_request(entity_type, type, filename = None, auth = None, filesize = Non
 		request['response_code'] = response_code
 		request['filesize'] = filesize
 		request['auth'] = auth
+		request['ip'] = ip 
 	#copy : server -> storage_client
 	elif(type == "copy"):
 		request['entity_type'] = entity_type
