@@ -1,0 +1,9 @@
+#  Config file for server code
+
+HOST = '127.0.0.1'
+PORT = 10000
+ENTITY_TYPE = "server"
+OPEN_CONNECTION_LIMIT = 100
+MAX_RETRIES = 10
+PING_TIMEOUT = 0.5
+

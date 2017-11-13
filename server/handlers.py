@@ -2,24 +2,22 @@ import random
 import socket
 
 from common import *
+import config
 import schemas
-
-ENTITY_TYPE = "server"
-AUTH = ""
-MAX_RETRIES = 10
 
 def conn_handler(conn, addr, db_handler):
     #  Based on the type of connection call different functions
     req_dict = read_request(recv_line(conn))
-    print(req_dict)
+    print("REQUEST_DATA:\n{}".format(req_dict))
     
     if req_dict["type"] == "download":
         handle_download(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "upload":
-        handle_upload2(conn, addr, req_dict, db_handler)
+        handle_upload(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "add_storage":
         handle_add_storage(conn, addr, req_dict, db_handler)
     elif req_dict["type"] == "remove_storage":
+        #  To be implemented later
         pass
     elif req_dict["type"] == "upload_complete_ack":
         handle_upload_complete(conn, addr, req_dict, db_handler)
@@ -33,7 +31,7 @@ def _remove_lock(db_handler, filename, locked_ip, filesize):
             storage_ip = locked_ip,
             filesize = filesize,
             )
-    print(query)
+    print("Running the query:\n{}".format(query))
     rows_affected = db_handler.run_sql("update", query)
     if(rows_affected == 1):
         print("Lock was removed")
@@ -48,12 +46,13 @@ def get_filedata(db_handler, filename, auth, filesize):
             owner = auth,
             filesize = filesize,
             )
-    print("get_file_data_query")
-    print(query)
+    print("Running the query:\n{}".format(query))
     file_data = db_handler.run_sql("get", query)
     if len(file_data) == 0:
+        print("Got No data corresponding to the query")
         return None
     else:
+        print("Got data:\n{}".format(file_data[0]))
         return file_data[0]
 
 def _insert_file(db_handler, filename, auth, ip, filesize):
@@ -63,12 +62,13 @@ def _insert_file(db_handler, filename, auth, ip, filesize):
             ip_list = str(ip),
             filesize = filesize,
             )
-    print("add_file_data_query")
-    print(query)
+    print("Running the query:\n{}".format(query))
     rows_affected = db_handler.run_sql("create", query)
     if rows_affected == 1:
+        print("The row was inserted")
         return True
     else:
+        print("The row was not inserted")
         return False
 
 def _update_file(db_handler, filename, auth, ip_list, filesize):
@@ -78,30 +78,31 @@ def _update_file(db_handler, filename, auth, ip_list, filesize):
             ip_list = str(ip_list),
             filesize = filesize,
             )
-    print("update_file_data_query")
-    print(query)
+    print("Running the query:\n{}".format(query))
     rows_affected = db_handler.run_sql("update", query)
     if rows_affected == 1:
+        print("The row was updated")
         return True
     else:
+        print("The row was not updated")
         return False
 
 def add_file(db_handler, filename, auth, ip, filesize):
     file_data = get_filedata(db_handler, filename, auth, filesize)
-    print("Get file data")
-    print(file_data)
-    count = 0
+    copy_count = 0
+    is_done = False
     if not file_data:
+        #  No such file exists in DB
+        #  Add this file to the DB set the count to 1
         is_done = _insert_file(db_handler, filename, auth, ip, filesize)
         if is_done:
             count = 1
         else:
             count = 0
-
     else:
-        print(file_data)
+        #  Such file exists in DB
+        #  Update the ip_list for this file in the DB
         file_data[3] += ", " + str(ip)
-        no_copies = file_data
         is_done = _update_file(db_handler, filename, auth, 
                 file_data[3], filesize)
         if is_done:
@@ -109,8 +110,7 @@ def add_file(db_handler, filename, auth, ip, filesize):
         else:
             count = -1*len(file_data[3].split(", "))
     
-    print("Got count")
-    print(count)
+    print("The copy count for the file is {}".format(count))
     return count 
 
 def handle_download(conn, addr, req_dict, db_handler):
@@ -120,69 +120,73 @@ def handle_download(conn, addr, req_dict, db_handler):
             filename=filename,
             owner=auth.split(":")[0]
             )
-    print(query)
+    print("Running the query:\n{}".format(query))
     ip_list = db_handler.run_sql("get", query)
     if len(ip_list)==0:
+        print("There is no ip_list for this file")
         response = make_request(
-                entity_type = ENTITY_TYPE,
+                entity_type = config.ENTITY_TYPE,
                 type = "download_ack",
                 auth = auth,
                 filename = filename,
                 response_code = CODE_FAILURE,
                 )
+        print("RESPONSE:\n{}".format(response))
         conn.send(response)
         #  File not exist
         return
-    print(ip_list)
+    print("The complete ip_list is {}".format(ip_list))
     ip_list = [ip for ip in ip_list[0][0].split(", ")]
     ip_list_available = []
     for ip in ip_list:
         query = schemas.get_ip_status.format(storage_ip=ip)
-        print(query)
+        print("Running the query:\n{}".format(query))
         status = db_handler.run_sql("get", query)
-        print(status)
         if(len(status)!=0 and status[0][0] != schemas.STORAGE_IP_DOWN):
+            print("{} is available".format(ip))
             ip_list_available.append(ip)
     
-    print(ip_list)
-    print(ip_list_available)
+    print("The available ip_list is {}".format(ip_list_available))
     if(len(ip_list_available) == 0):
+        #  File not available right now
+        print("No free ip available with the corresponding file")
         response = make_request(
-                entity_type = ENTITY_TYPE,
+                entity_type = config.ENTITY_TYPE,
                 type = "download_ack",
                 auth = auth,
                 filename = filename,
                 response_code = CODE_FAILURE,
                 )
-        conn.send(response)
-        #  File not available right now
-        return
-    response = make_request(
-            entity_type = ENTITY_TYPE,
-            type = "download_ack",
-            auth = auth,
-            filename = filename,
-            ip_list = ip_list_available,
-            response_code = CODE_SUCCESS,
-            )
+    else:
+        print("Free ip available with the corresponding file")
+        response = make_request(
+                entity_type = config.ENTITY_TYPE,
+                type = "download_ack",
+                auth = auth,
+                filename = filename,
+                ip_list = ip_list_available,
+                response_code = CODE_SUCCESS,
+                )
+    print("RESPONSE:\n{}".format(response))
     conn.send(response)
 
 def get_new_upload_id(db_handler, filename, filesize):
     new_id = None
     retries = 0
-    while retries<MAX_RETRIES:
+    while retries<config.MAX_RETRIES:
         query = schemas.get_ip_suff_storage.format(filesize=filesize)
-        print(query)
+        print("Running the query:\n{}".format(query))
         id_list = db_handler.run_sql("get", query)
         print("The result is")
         print(id_list)
         if len(id_list) == 0:
+            print("No ip available")
             retries += 1
             continue
 
         locked = False
         lock_attempts = 0
-        while(not locked and lock_attempts<len(id_list)):
+        while (not locked and lock_attempts<len(id_list)):
             lock_attempts+=1
             id = random.choice(id_list)
             id = id[0]
@@ -193,6 +197,7 @@ def get_new_upload_id(db_handler, filename, filesize):
                     new_status = schemas.STORAGE_IP_LOCKED,
                     storage_ip = id,
                     )
+            print("Running the query:\n{}".format(query))
             rows_affected = db_handler.run_sql("update", query)
             if rows_affected==1:
                 new_id = id
@@ -201,14 +206,15 @@ def get_new_upload_id(db_handler, filename, filesize):
         if locked:
             break
         retries += 1
-    print("Got id")
 
-    if retries == MAX_RETRIES:
+    if retries == config.MAX_RETRIES:
+        print("Could not get an ip")
         return None
     else:
+        print("Got ip:{}".format(new_id))
         return new_id
 
-def handle_upload2(conn, addr, req_dict, db_handler):
+def handle_upload(conn, addr, req_dict, db_handler):
     auth = req_dict["auth"]
     filename = req_dict["filename"]
     filesize = req_dict["filesize"]
@@ -222,10 +228,9 @@ def handle_upload2(conn, addr, req_dict, db_handler):
             print("Lock not removed")
 
     new_id = get_new_upload_id(db_handler, filename, filesize)
-    print("Hello")
     if new_id:
         response = make_request(
-                    entity_type = ENTITY_TYPE,
+                    entity_type = config.ENTITY_TYPE,
                     type = "upload_ack",
                     auth = auth,
                     response_code = CODE_SUCCESS,
@@ -235,7 +240,7 @@ def handle_upload2(conn, addr, req_dict, db_handler):
                     )
     else:
         response = make_request(
-                    entity_type = ENTITY_TYPE,
+                    entity_type = config.ENTITY_TYPE,
                     type = "upload_ack",
                     auth = auth,
                     response_code = CODE_FAILURE,
@@ -243,7 +248,7 @@ def handle_upload2(conn, addr, req_dict, db_handler):
                     filename = filename,
                     ip = "",
                     )
-    print(response)
+    print("RESPONSE:\n{}".format(response))
     conn.send(response)
 
 def handle_upload_temp(conn, addr, req_dict, db_handler):
@@ -260,7 +265,7 @@ def handle_upload_temp(conn, addr, req_dict, db_handler):
             print("Lock not removed")
 
     retries = 0
-    while retries<MAX_RETRIES:
+    while retries<config.MAX_RETRIES:
         query = schemas.get_ip_suff_storage.format(filesize=filesize)
         print(query)
         id_list = db_handler.run_sql("get", query)
@@ -291,9 +296,9 @@ def handle_upload_temp(conn, addr, req_dict, db_handler):
             break
         retries += 1
 
-    if retries == MAX_RETRIES:
+    if retries == config.MAX_RETRIES:
         response = make_request(
-                    entity_type = ENTITY_TYPE,
+                    entity_type = config.ENTITY_TYPE,
                     type = "upload_ack",
                     auth = auth,
                     response_code = CODE_FAILURE,
@@ -303,7 +308,7 @@ def handle_upload_temp(conn, addr, req_dict, db_handler):
                     )
     else:
         response = make_request(
-                    entity_type = ENTITY_TYPE,
+                    entity_type = config.ENTITY_TYPE,
                     type = "upload_ack",
                     auth = auth,
                     response_code = CODE_SUCCESS,
@@ -311,6 +316,7 @@ def handle_upload_temp(conn, addr, req_dict, db_handler):
                     filename = filename,
                     ip = id,
                     )
+    print("RESPONSE:\n{}".format(response))
     conn.send(response)
 
 def handle_add_storage(conn, addr, req_dict, db_handler):
@@ -320,6 +326,7 @@ def handle_add_storage(conn, addr, req_dict, db_handler):
     port_no = req_dict["port"]
     id = "{}:{}".format(addr[0], port_no)
     query = schemas.storage_check_query.format(storage_ip = id)
+
     id_count = db_handler.run_sql("get", query)
     id_count = id_count[0][0]
     if (id_count == 0):
@@ -334,14 +341,14 @@ def handle_add_storage(conn, addr, req_dict, db_handler):
         if( rows_affected == 1):
             print("Database entry of", addr[0] +":"+ str(port_no), "made")
             response = make_request(
-                        entity_type = ENTITY_TYPE,
+                        entity_type = config.ENTITY_TYPE,
                         type = "storage_added_ack",
                         auth = auth,
                         response_code = CODE_SUCCESS,
                         )
         else:
             response = make_request(
-                        entity_type = ENTITY_TYPE,
+                        entity_type = config.ENTITY_TYPE,
                         type = "storage_added_ack",
                         auth = auth,
                         response_code = CODE_FAILURE,
@@ -349,11 +356,12 @@ def handle_add_storage(conn, addr, req_dict, db_handler):
     else : 
         print("This machine is already a part of our network")
         response = make_request(
-                        entity_type = ENTITY_TYPE,
+                        entity_type = config.ENTITY_TYPE,
                         type = "storage_added_ack",
                         auth = auth,
                         response_code = CODE_SUCCESS,
                         )
+    print("RESPONSE:\n{}".format(response))
     conn.send(response)
 
 def handle_upload_complete(conn, addr, req_dict, db_handler):
@@ -365,8 +373,8 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
     conn.close()
 
     print("Trying to add")
-    no_added = add_file(db_handler, filename, auth, locked_ip, filesize)
-    if no_added<=0:
+    no_copies = add_file(db_handler, filename, auth, locked_ip, filesize)
+    if no_copies<=0:
         print("There was some error")
         is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
         print("Trying to remove lock from ")
@@ -376,7 +384,7 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
 
         return
 
-    if no_added == MAX_COPIES:
+    if no_copies == MAX_COPIES:
         is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
         print("Trying to remove lock from ")
         print(locked_ip)
@@ -401,7 +409,7 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
 
     if new_id:
         response = make_request(
-                    entity_type = ENTITY_TYPE,
+                    entity_type = config.ENTITY_TYPE,
                     type = "copy",
                     auth = auth,
                     response_code = CODE_SUCCESS,
@@ -411,7 +419,7 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
                     )
     else:
         response = make_request(
-                    entity_type = ENTITY_TYPE,
+                    entity_type = config.ENTITY_TYPE,
                     type = "copy",
                     auth = auth,
                     response_code = CODE_FAILURE,
@@ -419,7 +427,7 @@ def handle_upload_complete(conn, addr, req_dict, db_handler):
                     filename = filename,
                     ip = "",
                     )
-    print(response)
+    print("RESPONSE:\n{}".format(response))
     sock.send(response)
     sock.close()
 

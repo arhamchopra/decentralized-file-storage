@@ -4,13 +4,15 @@ import socket
 from common import *
 
 ENTITY_TYPE="client"
-#  Add AUTH data here or it wont work
 MAIDSAFE_FILEPATH = "./maidsafe/"
 MAX_RETRIES = 10
+
 def handler(args):
     #  Based on the command of connection call different functions
     if "dirpath" in args.keys():
         MAIDSAFE_FILEPATH = args["dirpath"]
+    if "max_retries" in args.keys():
+        MAX_RETRIES = args["max_retries"]
 
     if args["command"] == "download":
         handle_download(args["auth"], args["filename"])

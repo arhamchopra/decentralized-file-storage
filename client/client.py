@@ -7,6 +7,7 @@ SERVER_IP = "127.0.0.1"
 SERVER_PORT = 10000
 AUTH = "default"
 DIRPATH = "./maidsafe"
+MAX_RETRIES = 10
 
 parser = argparse.ArgumentParser()
 
@@ -16,6 +17,8 @@ parser.add_argument('--server_ip', type=str,
         default=SERVER_IP, help='IP for the server')
 parser.add_argument('--server_port', type=int, 
         default=SERVER_PORT, help='Port for the server')
+parser.add_argument('--max_retries', type=int, default=MAX_RETRIES, 
+        help='The number of attempts for upload before failing')
 parser.add_argument('--dirpath', type=str, default=DIRPATH, 
         help='Path to the maidsafe directory')
 parser.add_argument('--command', type=str, required=True,

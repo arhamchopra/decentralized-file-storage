@@ -11,21 +11,31 @@ import database_utility as db_util
 from ping_utility import ping_service
 from handlers import conn_handler
 import schemas
+import config
 
 #  Startup of server
 #  Initialize Variables
 HOST = '127.0.0.1'
 PORT = 10000
-ENTITIY_TYPE = "server"
 OPEN_CONNECTION_LIMIT = 100
 
 #  File and Storage Schemas in the database
 file_info = schemas.file
 storage_info = schemas.storage
 
-#  Load/Create Database
-
 #  Parse Arguments
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--host', type=str, 
+        default=config.HOST, help='IP for the server')
+parser.add_argument('--port', type=int, 
+        default=config.PORT, help='Port for the server')
+parser.add_argument('--open_conn_limit', type=int,
+        default=config.OPEN_CONNECTION_LIMIT,
+        help='The limit of number of open connections')
+
+args = parser.parse_args()
+args_dict = vars(args)
 
 #  Create Database
 print("Connecting to database ...")
@@ -45,8 +55,8 @@ print("Ping Started")
 print("Creating Socket for acceptings connections")
 open_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 open_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-open_socket.bind((HOST, PORT))
-open_socket.listen(OPEN_CONNECTION_LIMIT)
+open_socket.bind((args.host, args.port))
+open_socket.listen(args.open_conn_limit)
 print("Socket Started")
 
 @atexit.register

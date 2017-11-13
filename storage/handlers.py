@@ -3,15 +3,23 @@ import subprocess
 import socket
 
 from common import *
+import config
 
-ENTITY_TYPE = "storage"
-TOTAL_SPACE = 1200000
-HOST = '127.0.0.1'
-PORT = 12011
+ENTITY_TYPE = config.ENTITY_TYPE
+TOTAL_SPACE = config.TOTAL_SPACE
+HOST = config.HOST
+PORT = config.PORT
+MAX_RETRIES = config.MAX_RETRIES
 
-#MAIDSAFE_FILEPATH = "./maidsafe/"
-MAX_RETRIES = 10
-def conn_handler(conn, addr):
+def conn_handler(conn, addr, args):
+    if "host" in args:
+        HOST = args["host"]
+    if "port" in args:
+        PORT = args["port"]
+    if "total_space" in args:
+        TOTAL_SPACE = args["total_space"]
+    if "max_retries" in args:
+        MAX_RETRIES = args["max_retries"]
     #  Based on the type of connection call different functions
     req_dict = read_request(recv_line(conn))
     

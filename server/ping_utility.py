@@ -2,8 +2,8 @@ import os
 import time
 
 import schemas
+import config
 
-PING_TIMEOUT = 0.5
 #  Change the way response to queries are handled
 def ping_service(db_handler, ip_table_name, ip_col_name):
     while True:
@@ -26,4 +26,4 @@ def ping_service(db_handler, ip_table_name, ip_col_name):
             except:
                 print("Error in pinging ip: {}".format(ip))
         #  Wait for some time before repeating
-        time.sleep(PING_TIMEOUT)
+        time.sleep(config.PING_TIMEOUT)
