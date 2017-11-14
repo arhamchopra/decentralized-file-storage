@@ -101,7 +101,7 @@ def handle_download(auth, filename):
 def _upload_helper(server_response_code, storage_id, auth, filename, filepath):
     if server_response_code == CODE_FAILURE:
         print("Server Error")
-        return False
+        return (False, server_response_code)
 
     filesize = os.path.getsize(filepath)
 
@@ -126,7 +126,7 @@ def _upload_helper(server_response_code, storage_id, auth, filename, filepath):
     storage_response = read_request(recv_line(sock))
 
     if(storage_response["response_code"]!=CODE_SUCCESS):
-        return False
+        return (False, storage_response["response_code"])
 
     with open(filepath, "rb") as f:
         print ("file opened")
@@ -139,18 +139,20 @@ def _upload_helper(server_response_code, storage_id, auth, filename, filepath):
             #print("data=%s"%(data))
             # write data to a file
     upload_status = False
+    resp_code = 400
     if(send_success == 1):
         storage_response_ack = read_request(recv_line(sock))
         if(storage_response_ack["response_code"]==CODE_SUCCESS):
             print("Successfully sent the file")
             upload_status = True
+            resp_code = 300
         else:
             print("Upload not successful")
     else:
         print("Upload error")
     
     sock.close()
-    return upload_status
+    return (upload_status, resp_code)
 
 def handle_upload(auth, filename):
     print("IIS CALLSEDJK:w")
@@ -162,7 +164,7 @@ def handle_upload(auth, filename):
     filesize = os.path.getsize(filename)
     is_retry = False
     resp_code = -1
-    storage_ip = -1
+    storage_id = -1
 
     retries = 0
     while retries<MAX_RETRIES:
@@ -177,7 +179,7 @@ def handle_upload(auth, filename):
                 filesize=filesize,
                 auth=auth,
                 response_code = resp_code,
-                ip = storage_ip,
+                ip = storage_id,
                 )
         else:
             server_request=make_request(
@@ -195,7 +197,7 @@ def handle_upload(auth, filename):
         print(server_response)
         storage_id = server_response["ip"]
         resp_code = server_response["response_code"]
-        upload_success = _upload_helper(resp_code, storage_id, 
+        upload_success, resp_code = _upload_helper(resp_code, storage_id, 
                                         auth, filename, filename)
 
         if upload_success:
@@ -203,7 +205,9 @@ def handle_upload(auth, filename):
             open(maidsafe_path, "a").close()
             break;
         else:
+            print("Retrying")
             retries += 1
+            is_retry = True
 
 def handle_upload_temp(auth, filename):
     file_exists=os.path.isfile(filename)

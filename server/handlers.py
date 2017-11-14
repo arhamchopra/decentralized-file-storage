@@ -221,7 +221,7 @@ def handle_upload(conn, addr, req_dict, db_handler):
     if "response_code" in req_dict.keys() and \
         req_dict["response_code"] == CODE_FAILURE:
         locked_ip = req_dict["ip"]
-        is_removed = _remove_lock(db_handler, filename, locked_ip)
+        is_removed = _remove_lock(db_handler, filename, locked_ip, filesize)
         if is_removed:
             print("Lock removed")
         else:

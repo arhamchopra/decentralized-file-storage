@@ -10,6 +10,8 @@ TOTAL_SPACE = config.TOTAL_SPACE
 HOST = config.HOST
 PORT = config.PORT
 MAX_RETRIES = config.MAX_RETRIES
+SERVER_IP = config.SERVER_IP
+SERVER_PORT = config.SERVER_PORT
 
 def conn_handler(conn, addr, args):
     if "host" in args:
@@ -44,6 +46,7 @@ def handle_download(conn, addr, req_dict):
                 filename=filename,
                 auth=auth,
                 response_code=CODE_FAILURE) 
+        print(msg)
         conn.send(msg)
         return
 
@@ -56,6 +59,7 @@ def handle_download(conn, addr, req_dict):
             filesize=filesize,
             auth=auth,
             response_code=CODE_SUCCESS) 
+    print(msg)
     conn.send(msg)
 
     client_ack = read_request(recv_line(conn))
@@ -79,20 +83,21 @@ def handle_upload(conn, addr, req_dict):
         os.mkdir(auth)
         #os.chmod(auth)
         #3164 in octal is 500 in decimal
-    raw_out=subprocess.Popen(["du","-bs"], stdout=subprocess.PIPE)
-    out=str(raw_out.stdout.read())
-    used_space=int(out.split("\t")[0])
-    print(used_space)
-    if(filesize + used_space > TOTAL_SPACE):
-        msg=make_request(
-                entity_type=ENTITY_TYPE,
-                type="upload_ack",
-                filename=filename,
-                auth=auth,
-                response_code=CODE_FAILURE) 
-        conn.send(msg)
-        conn.close()
-        return
+   #   raw_out=subprocess.Popen(["du","-bs"], stdout=subprocess.PIPE)
+    #  out=str(raw_out.stdout.read())
+    #  used_space=int(out.split("\t")[0])
+    #  print(used_space)
+    #  if(filesize + used_space > TOTAL_SPACE):
+    #      msg=make_request(
+    #              entity_type=ENTITY_TYPE,
+    #              type="upload_ack",
+    #              filename=filename,
+    #              auth=auth,
+    #              response_code=CODE_FAILURE)
+    #      print(msg)
+    #      conn.send(msg)
+    #      conn.close()
+   #       return
 
     msg=make_request(
             entity_type=ENTITY_TYPE,
@@ -101,15 +106,14 @@ def handle_upload(conn, addr, req_dict):
             filesize=filesize,
             auth=auth,
             response_code=CODE_SUCCESS) 
+    print(msg)
     conn.send(msg)
     fsize=0
     with open(filepath,'wb') as f:
-        while True:
+        while fsize<filesize:
             data = conn.recv(RECV_SIZE)
             f.write(data)
             fsize+=len(data)
-            if len(data)<RECV_SIZE:
-                break       
 
     if(filesize==fsize):
         msg = make_request(
@@ -119,6 +123,7 @@ def handle_upload(conn, addr, req_dict):
                 filesize=filesize,
                 auth=auth,
                 response_code=CODE_SUCCESS) 
+        print(msg)
         conn.send(msg)
         msg2 = make_request(
                 entity_type=ENTITY_TYPE,
@@ -130,9 +135,9 @@ def handle_upload(conn, addr, req_dict):
                 response_code=CODE_SUCCESS) 
         # Create a socket to send the upload complete ack to the server
         print("Request to server")
-        print(msg2)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
         sock.connect(( SERVER_IP, SERVER_PORT ))
+        print(msg2)
         sock.send(msg2)
         sock.close()
     else:
@@ -144,6 +149,7 @@ def handle_upload(conn, addr, req_dict):
                 filesize=filesize,
                 auth=auth,
                 response_code=CODE_FAILURE) 
+        print(msg)
         conn.send(msg)
     conn.close()
 
@@ -171,6 +177,7 @@ def _copy_helper(req_dict):
         filesize = filesize,
         auth = auth
         ) 
+    print(msg)
     sock.send(msg)
     storage_response = read_request(recv_line(sock))
     filepath = auth+"/"+filename
@@ -227,6 +234,7 @@ def _storage_upload_helper(server_response, auth, filename, filepath, filesize):
         filesize = filesize,
         auth = auth
         ) 
+    print(msg)
     sock.send(msg)
     storage_response = read_request(recv_line(sock))
 

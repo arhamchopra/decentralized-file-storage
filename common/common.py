@@ -2,7 +2,7 @@
 MAX_COPIES = 2
 RECV_SIZE = 1024
 SEND_SIZE = 1024
-SERVER_IP = "127.0.0.1"
+SERVER_IP = "172.24.1.107"
 SERVER_PORT = 10000
 def recv_line(conn):
     data = ""

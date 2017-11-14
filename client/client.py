@@ -3,7 +3,7 @@ import argparse
 
 from handlers import handler
 
-SERVER_IP = "127.0.0.1"
+SERVER_IP = "172.24.1.107"
 SERVER_PORT = 10000
 AUTH = "default"
 DIRPATH = "./maidsafe"
