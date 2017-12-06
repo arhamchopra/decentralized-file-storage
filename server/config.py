@@ -1,6 +1,6 @@
 #  Config file for server code
 
-HOST = '172.24.1.107'
+HOST = '172.27.22.187'
 PORT = 10000
 ENTITY_TYPE = "server"
 OPEN_CONNECTION_LIMIT = 100

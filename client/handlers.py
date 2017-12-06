@@ -6,6 +6,7 @@ from common import *
 ENTITY_TYPE="client"
 MAIDSAFE_FILEPATH = "./maidsafe/"
 MAX_RETRIES = 10
+SERVER_IP = "172.27.22.187"
 
 def handler(args):
     #  Based on the command of connection call different functions
